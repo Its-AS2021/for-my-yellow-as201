@@ -786,23 +786,61 @@ function drawStarMap(z) {
   });
 }
 
-// ════════════════════════════════════════════════════════
-//  INIT ALL FEATURES (called from startWishing via setTimeout)
-// ════════════════════════════════════════════════════════
-function initAllFeatures() {
-  const age = personDOB ? (new Date().getFullYear() - new Date(personDOB).getFullYear()) : 5;
-  // Set candle count for 3D cake before init
-  window._cakeCandleCount = Math.min(Math.max(age || 5, 1), 10);
-  totalCandles = window._cakeCandleCount;
-  candlesOut = 0;
-  // Init 3D cake (replaces old initCandles)
-  setTimeout(() => {
-    if (typeof initCake3D === 'function') initCake3D();
-  }, 100);
-  // Init 3D gift box
-  setTimeout(() => {
-    if (typeof initGift3D === 'function') initGift3D();
-  }, 150);
-  startFunStats(personDOB);
-  initZodiac(personDOB);
+   //MEMORY AUDIO ↔ BACKGROUND MUSIC FADE
+   //================================================ 
+
+const bgMusic = document.getElementById('bgMusic');
+
+function fadeVolume(audio, target, duration = 1200) {
+  const start = audio.volume;
+  const steps = 20;
+  const stepTime = duration / steps;
+  const change = (target - start) / steps;
+
+  let current = 0;
+
+  const timer = setInterval(() => {
+    current++;
+    audio.volume = Math.max(0, Math.min(1, start + change * current));
+
+    if (current >= steps) {
+      clearInterval(timer);
+    }
+  }, stepTime);
 }
+
+const memoryAudios = document.querySelectorAll('.memory-card audio');
+
+memoryAudios.forEach(audio => {
+
+  audio.addEventListener('play', () => {
+
+    memoryAudios.forEach(other => {
+      if (other !== audio && !other.paused) {
+        other.pause();
+        other.currentTime = 0;
+      }
+    });
+
+    if (bgMusic && !bgMusic.paused) {
+      fadeVolume(bgMusic, 0.1, 1200);
+    }
+  });
+
+  audio.addEventListener('ended', () => {
+    if (bgMusic) {
+      fadeVolume(bgMusic, 1, 1200);
+    }
+  });
+
+  audio.addEventListener('pause', () => {
+    if (
+      bgMusic &&
+      audio.currentTime < audio.duration &&
+      [...memoryAudios].every(a => a.paused)
+    ) {
+      fadeVolume(bgMusic, 1, 1200);
+    }
+  });
+
+});
