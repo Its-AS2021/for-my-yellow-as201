@@ -1,359 +1,846 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>🎂 Birthday Wishes</title>
-  <link rel="stylesheet" href="style.css" />
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=DM+Sans:wght@300;400;500&family=Dancing+Script:wght@700&display=swap" rel="stylesheet">
-</head>
-<body>
+/* ============================================================
+   BIRTHDAY WISHES — MAIN SCRIPT (UPDATED)
+   ============================================================ */
 
-  <!-- Background video/image -->
-  <div class="bg-overlay"></div>
-  <video class="bg-video" autoplay muted loop playsinline>
-    <source src="bg.mp4" type="video/mp4">
-  </video>
-  <img class="bg-img" src="bg.png" alt="" />
+// ─── State ────────────────────────────────────────────────
+let personName = '';
+let personDOB  = '';
+let personAge  = 0;
 
-  <!-- Background Music -->
-  <audio id="bgMusic" src="bg.mp3" loop preload="auto"></audio>
+// ─── Wishes data (Quotes Fixed) ─────────────────────────
+const wishesData = [
+  { icon:'🌟', title:'Unlimited Joy',     text:'May every single day of this new year bring you more happiness than the last.' },
+  { icon:'💫', title:'Dream Big',         text:'Chase every dream that lights a fire in your heart. The world is yours.' },
+  { icon:'🏆', title:'Unstoppable You',   text: 'You have already conquered so much - this year you will conquer even more.' },
+  { icon:'💖', title:'Boundless Love',    text:'Surrounded by people who love you deeply, may you always feel truly cherished.' },
+  { icon:'🌈', title:'New Adventures',    text:'May this year open doors you never even knew existed.' },
+  { icon:'✨', title:'Inner Peace',       text:'May you find calm in chaos, strength in struggle, and light in every shadow.' },
+  { icon:'🎯', title:'Every Goal Met',    text: 'Set the targets high - because this year you will smash every single one.' },
+  { icon:'🌸', title:'Good Health',       text:'Wishing you vibrant energy, glowing health, and a radiant smile always.' },
+  { icon:'🔥', title:'Be Legendary',      text: 'You were not born ordinary. Blaze so bright the whole sky notices.' },
+];
 
-  <!-- Floating particles canvas removed -->
+// ─── Default note ────────────────────────────────────────
+function getDefaultNote(name) {
+  return `Dearest ${name},\n\nHappy Birthday🎈...for my yellow💛. I'm really sorry for our argument and for not talking these past days. I miss you a lot. You are very special to me and I never wanted to hurt you. Hope your day is as beautiful as you.\n\nI hope you can understand me. I value our friendship a lot. Hope we talk soon and fix everything ok!!\n\nWith all my love,`;
+}
 
-  <!-- ===================== ONBOARDING SCREEN ===================== -->
-  <div id="onboarding" class="screen active">
-    <div class="onboard-card glass">
-      <div class="onboard-icon">🎂</div>
-      <h1 class="onboard-title">Birthday<br/><span>Wishes</span></h1>
-      <p class="onboard-sub">Create a magical birthday experience for your favourite person</p>
+// ─── Background Music ─────────────────────────────────────
+function startBgMusic() {
+  const music = document.getElementById('bgMusic');
+  if (!music) return;
+  music.volume = 0.35;
+  const playPromise = music.play();
+  if (playPromise !== undefined) {
+    playPromise.catch(() => {
+      // Autoplay blocked — try on first user interaction
+      const tryPlay = () => {
+        music.play().catch(() => {});
+        document.removeEventListener('click', tryPlay);
+        document.removeEventListener('touchstart', tryPlay);
+      };
+      document.addEventListener('click', tryPlay, { once: true });
+      document.addEventListener('touchstart', tryPlay, { once: true });
+    });
+  }
+}
 
-      <div class="input-group">
-        <label>Their Name</label>
-        <input type="text" id="inputName" placeholder="e.g. Priya, Rahul, Aanya…" maxlength="30" autocomplete="off"/>
-      </div>
+// ─── Start (Let's Celebrate Button Click) ────────────────
+function startWishing() {
+  const nameInput = document.getElementById('inputName');
+  const dobInput  = document.getElementById('inputDOB');
 
-      <div class="input-group">
-        <label>Date of Birth</label>
-        <input type="date" id="inputDOB" />
-      </div>
+  const name = nameInput.value.trim();
+  const dob  = dobInput.value;
 
-      <div class="input-group">
-        <label>Upload 4 Photos 📸</label>
-        <label class="photo-upload-label" for="photoUploadInput">
-          <span class="photo-upload-icon">📁</span>
-          <span id="uploadLabel">Choose up to 4 photos from your device</span>
-          <input type="file" id="photoUploadInput" accept="image/*" multiple onchange="handlePhotoUploads(this)" style="display:none;" />
-        </label>
-        <div class="upload-previews">
-          <img class="upload-preview-img" src="" alt="" style="display:none;" />
-          <img class="upload-preview-img" src="" alt="" style="display:none;" />
-          <img class="upload-preview-img" src="" alt="" style="display:none;" />
-          <img class="upload-preview-img" src="" alt="" style="display:none;" />
-        </div>
-      </div>
+  if (!name) { 
+    showToast('Please enter their name 🌸'); 
+    nameInput.focus(); 
+    return; 
+  }
+  if (!dob) { 
+    showToast('Please enter their date of birth 🎂'); 
+    dobInput.focus(); 
+    return; 
+  }
 
-      <button class="btn-primary" id="btnStart" onclick="startWishing()">
-        <span>Let's Celebrate</span>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-      </button>
+  personName = name;
+  personDOB  = dob;
+  personAge  = calculateAge(dob);
 
-      <p class="privacy-note">✨ Everything stays in your browser — private & personal</p>
+  sessionStorage.setItem('bdayName', name);
+  sessionStorage.setItem('bdayDOB',  dob);
+
+  launchMainPage();
+}
+
+function launchMainPage() {
+  const onboarding = document.getElementById('onboarding');
+  const main = document.getElementById('mainPage');
+
+  onboarding.classList.remove('active');
+  onboarding.style.display = 'none';
+
+  main.classList.add('active');
+  main.style.display = 'block';
+
+  populatePage();
+  initScrollObserver();
+  spawnFloatingEmojis();
+  launchEntryConfetti();
+  initHamburger();
+  startBgMusic();
+
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ─── Calculate age ────────────────────────────────────────
+function calculateAge(dob) {
+  const today = new Date();
+  const birth  = new Date(dob);
+  let age = today.getFullYear() - birth.getFullYear();
+  const m = today.getMonth() - birth.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+  return Math.max(age, 0);
+}
+
+function formatDate(dob) {
+  const d = new Date(dob + 'T00:00:00');
+  return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+// ─── Populate dynamic content ────────────────────────────
+function populatePage() {
+  document.getElementById('navName').textContent = personName;
+  const hbND = document.getElementById('hbNameDisplay');
+  if (hbND) hbND.textContent = personName;
+
+  document.getElementById('ageBadge').textContent  = `🎂 Turning ${personAge} Today!`;
+  document.getElementById('heroName').textContent   = personName;
+  document.getElementById('heroTagline').textContent = `Sometimes the most unexpected friendships become the most special ones💛`;
+  document.getElementById('heroDate').textContent   = `📅 Born: ${formatDate(personDOB)}`;
+  startNextBdayCountdown(personDOB);
+
+  document.querySelectorAll('.dynamic-name').forEach(el => el.textContent = personName);
+
+  const saved = localStorage.getItem('bdayNote_' + personName);
+  document.getElementById('noteText').textContent = saved || getDefaultNote(personName);
+  document.getElementById('noteSig').textContent  = `— With Love 💖`;
+
+  renderWishes();
+
+  const url = `${window.location.origin}/?name=${encodeURIComponent(personName)}&dob=${encodeURIComponent(personDOB)}`;
+  document.getElementById('shareUrl').textContent = url;
+
+  document.title = `🎂 Happy Birthday, ${personName}!`;
+  setTimeout(initAllFeatures, 300);
+}
+
+// ─── Render wish cards ────────────────────────────────────
+function renderWishes() {
+  const grid = document.getElementById('wishesGrid');
+  if (!grid) return;
+  
+  grid.innerHTML = wishesData.map((w, i) => `
+    <div class="wish-card" style="transition-delay:${i * 60}ms">
+      <span class="wish-icon">${w.icon}</span>
+      <div class="wish-title">${w.title}</div>
+      <p class="wish-text">${w.text.replace(/you/g, personName || 'you')}</p>
     </div>
-  </div>
+  `).join('');
+}
 
-  <!-- ===================== MAIN WISH PAGE ===================== -->
-  <div id="mainPage" class="screen">
+// ─── Save custom note ─────────────────────────────────────
+function saveNote() {
+  const val = document.getElementById('customNote').value.trim();
+  if (!val) { showToast('Please write something first ✏️'); return; }
+  localStorage.setItem('bdayNote_' + personName, val);
+  document.getElementById('noteText').textContent = val;
+  showToast('Note saved! 💾');
+}
 
-    <!-- NAV -->
-    <nav class="navbar glass">
-      <div class="nav-logo">🎉 <span id="navName"></span>'s Day</div>
-      <div class="nav-links">
-        <a href="#home" class="nav-link active" data-section="home">Home</a>
-        <a href="#gallery" class="nav-link" data-section="gallery">Gallery</a>
-        <a href="#note" class="nav-link" data-section="note">Love Note</a>
-        <a href="#wishes" class="nav-link" data-section="wishes">Wishes</a>
-      </div>
-      <button class="hamburger" id="hamburger">☰</button>
-    </nav>
+// ─── Scroll observer ─────────────────────────────────────
+function initScrollObserver() {
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+      }
+    });
+  }, { threshold: 0.1 });
 
-    <!-- MOBILE MENU -->
-    <div class="mobile-menu glass" id="mobileMenu">
-      <a href="#home" onclick="closeMobileMenu()">🏠 Home</a>
-      <a href="#gallery" onclick="closeMobileMenu()">🖼 Gallery</a>
-      <a href="#note" onclick="closeMobileMenu()">💌 Love Note</a>
-      <a href="#wishes" onclick="closeMobileMenu()">🌟 Wishes</a>
-    </div>
+  document.querySelectorAll('.gif-card, .wish-card').forEach(el => observer.observe(el));
+}
 
-    <!-- HERO SECTION -->
-    <section id="home" class="section hero-section">
-      <div class="confetti-burst" id="confettiBurst"></div>
+// ─── Floating emojis ─────────────────────────────────────
+function spawnFloatingEmojis() {
+  const container = document.getElementById('floatingEmojis');
+  if (!container) return;
+  
+  container.innerHTML = '';
+  const emojis = ['🎉','💛','✨','🌟','💖','🎂','🎁','🌸','💫','🥂','🎈','💛'];
+  for (let i = 0; i < 18; i++) {
+    const el = document.createElement('span');
+    el.className = 'floating-emoji';
+    el.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+    el.style.left = `${Math.random() * 100}%`;
+    el.style.animationDelay = `${Math.random() * 5}s`;
+    el.style.animationDuration = `${5 + Math.random() * 5}s`;
+    el.style.fontSize = `${1 + Math.random() * 1}rem`;
+    container.appendChild(el);
+  }
+}
 
-      <div class="hero-content">
-        <div class="hb-heading" id="hbHeading">
-          <span class="hb-happy">Happy</span>
-          <span class="hb-birthday">Birthday</span>
-          <span class="hb-name-display" id="hbNameDisplay"></span>
-        </div>
-        <div class="age-badge glass" id="ageBadge"></div>
-        <p class="hero-sub">✨ Today is all about</p>
-        <h1 class="hero-name" id="heroName"></h1>
-        <p class="hero-tagline" id="heroTagline"></p>
-        <div class="hero-date glass" id="heroDate"></div>
+// ─── Navigation ───────────────────────────────────────────
+function scrollTo(id) {
+  document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
+}
 
-        <div class="hero-btns">
-          <button class="btn-primary celebrate-btn" id="celebrateBtn" onclick="triggerCelebrate()">🎊 Celebrate!</button>
-          <button class="btn-outline" onclick="openGalleryShow()">View Gallery</button>
-        </div>
-      </div>
+window.addEventListener('scroll', () => {
+  const navLinks = document.querySelectorAll('.nav-link');
+  const sections = ['home', 'gallery', 'note', 'wishes'];
+  let current = '';
+  sections.forEach(id => {
+    const el = document.getElementById(id);
+    if (el && window.scrollY >= el.offsetTop - 200) current = id;
+  });
+  navLinks.forEach(a => {
+    a.classList.toggle('active', a.dataset.section === current);
+  });
+});
 
-      <div class="floating-emojis" id="floatingEmojis"></div>
-    </section>
+function initHamburger() {
+  const hamburger = document.getElementById('hamburger');
+  const mobileMenu = document.getElementById('mobileMenu');
+  if (hamburger && mobileMenu) {
+    hamburger.onclick = () => mobileMenu.classList.toggle('open');
+  }
+}
 
-    <!-- GALLERY SECTION (GIFs — repositioned) -->
-    <section id="gallery" class="section gallery-section">
-      <div class="section-header">
-        <span class="section-tag">✨ Moments</span>
-        <h2 class="section-title">Birthday <em>Gallery</em></h2>
-        <p class="section-desc">A little world built just for <span class="dynamic-name"></span></p>
-      </div>
+function closeMobileMenu() {
+  document.getElementById('mobileMenu')?.classList.remove('open');
+}
 
-      <!-- GIFs scattered, not a grid -->
-      <div class="gif-scattered">
-        <div class="gif-card glass gif-pos-1">
-          <img src="assets/gif1.gif" alt="Birthday GIF 1" class="gif-img" />
-          <div class="gif-caption">Celebrate! 🎉</div>
-        </div>
-        <div class="gif-card glass gif-pos-2">
-          <img src="assets/gif2.gif" alt="Birthday GIF 2" class="gif-img" />
-          <div class="gif-caption">You're Amazing 🌟</div>
-        </div>
-        <div class="gif-card glass gif-pos-3">
-          <img src="assets/gif3.gif" alt="Birthday GIF 3" class="gif-img" />
-          <div class="gif-caption">Keep Shining ✨</div>
-        </div>
-        <div class="gif-card glass gif-pos-4">
-          <img src="assets/gif4.gif" alt="Birthday GIF 4" class="gif-img" />
-          <div class="gif-caption">Stay Awesome 🎂</div>
-        </div>
-      </div>
-    </section>
+// ─── Share Logic ──────────────────────────────────────────
+function copyLink() {
+  const url = document.getElementById('shareUrl').textContent;
+  navigator.clipboard.writeText(url).then(() => {
+    showToast('Link copied! 📋');
+  }).catch(() => {
+    showToast('Failed to copy. Copy manually.');
+  });
+}
 
-    <!-- LOVE NOTE SECTION -->
-    <section id="note" class="section note-section">
-      <div class="section-header">
-        <span class="section-tag">💌 From the heart</span>
-        <h2 class="section-title">A Special <em>Note</em></h2>
-      </div>
+function shareWA() {
+  const url = document.getElementById('shareUrl').textContent;
+  const msg = `🎂 Happy Birthday, ${personName}! 🎉\n\nI made a special birthday page for you. Check it out here:\n${url}`;
+  window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+}
 
-      <div class="note-container">
-        <div class="note-card glass">
-          <div class="note-decoration">❝</div>
-          <p class="note-text" id="noteText"></p>
-          <div class="note-sig" id="noteSig"></div>
-          <div class="note-hearts">
-            <span>💖</span><span>💕</span><span>💗</span>
-          </div>
-        </div>
+function shareTelegram() {
+  const url = document.getElementById('shareUrl').textContent;
+  const msg = `🎂 Happy Birthday, ${personName}! 🎉`;
+  window.open(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(msg)}`, '_blank');
+}
 
-        <div class="note-edit-panel glass">
-          <h3>✏️ Personalise Your Note</h3>
-          <textarea id="customNote" placeholder="Write your personal message here…" rows="5"></textarea>
-          <button class="btn-primary small" onclick="saveNote()">Save Note 💾</button>
-        </div>
-      </div>
-    </section>
+// ─── Toast Logic ──────────────────────────────────────────
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  if (!t) return;
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 3000);
+}
 
-    <!-- WISHES SECTION -->
-    <section id="wishes" class="section wishes-section">
-      <div class="section-header">
-        <span class="section-tag">🌟 For You</span>
-        <h2 class="section-title">Birthday <em>Wishes</em></h2>
-        <p class="section-desc">Sending all the love to <span class="dynamic-name"></span></p>
-      </div>
+// ─── DOM Ready ───────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  const params = new URLSearchParams(window.location.search);
+  const urlName = params.get('name');
+  const urlDOB  = params.get('dob');
 
-      <div class="wishes-grid" id="wishesGrid"></div>
-    </section>
+  if (urlName && urlDOB) {
+    personName = urlName;
+    personDOB  = urlDOB;
+    personAge  = calculateAge(urlDOB);
+    launchMainPage();
+    return;
+  }
 
-    <!-- FEATURES -->
-    <!-- ===== FEATURE 2: BLOW OUT CANDLES ===== -->
-    <section class="section candles-section" id="candlesSection">
-      <div class="section-header">
-        <span class="section-tag">🕯️ Make It Special</span>
-        <h2 class="section-title">Blow Out the <em>Candles</em></h2>
-        <p class="section-desc">Click each candle or use your mic to blow!</p>
-      </div>
-      <div class="cake-wrap">
-        <canvas id="cakeCanvas" width="420" height="380" style="border-radius:20px;cursor:pointer;" title="Click candles to blow them out!"></canvas>
-        <div class="mic-btn-wrap">
-          <button class="btn-outline mic-btn" id="micBtn" onclick="startMicBlow()">🎤 Use Mic to Blow</button>
-          <p class="mic-hint" id="micHint"></p>
-        </div>
-        <div class="candle-msg" id="candleMsg"></div>
-      </div>
-      <!-- Hidden elements for compatibility -->
-      <div id="candlesRow" style="display:none;"></div>
-    </section>
+  const sName = sessionStorage.getItem('bdayName');
+  const sDOB  = sessionStorage.getItem('bdayDOB');
+  if (sName && sDOB) {
+    personName = sName;
+    personDOB  = sDOB;
+    personAge  = calculateAge(sDOB);
+    launchMainPage();
+    return;
+  }
 
-    <!-- ===== FEATURE 4: AGE IN FUN STATS ===== -->
-    <section class="section stats-section" id="statsSection">
-      <div class="section-header">
-        <span class="section-tag">⏳ Your Life So Far</span>
-        <h2 class="section-title">Age in <em>Fun Stats</em></h2>
-        <p class="section-desc">Live counting since the moment you were born</p>
-      </div>
-      <div class="stats-grid" id="statsGrid">
-        <div class="stat-card glass"><div class="stat-icon">❤️</div><div class="stat-val" id="statHeartbeats">0</div><div class="stat-label">Heartbeats</div></div>
-        <div class="stat-card glass"><div class="stat-icon">🌬️</div><div class="stat-val" id="statBreaths">0</div><div class="stat-label">Breaths Taken</div></div>
-        <div class="stat-card glass"><div class="stat-icon">⏰</div><div class="stat-val" id="statHours">0</div><div class="stat-label">Hours Lived</div></div>
-        <div class="stat-card glass"><div class="stat-icon">📅</div><div class="stat-val" id="statDays">0</div><div class="stat-label">Days on Earth</div></div>
-        <div class="stat-card glass"><div class="stat-icon">😴</div><div class="stat-val" id="statSleep">0</div><div class="stat-label">Hours of Sleep</div></div>
-        <div class="stat-card glass"><div class="stat-icon">😂</div><div class="stat-val" id="statLaughs">0</div><div class="stat-label">Times Laughed</div></div>
-      </div>
-    </section>
+  document.getElementById('onboarding').classList.add('active');
 
-    <!-- ===== FEATURE 6: MYSTERY GIFT BOX ===== -->
-    <section class="section gift-section" id="giftSection">
-      <div class="section-header">
-        <span class="section-tag">🎁 Surprise!</span>
-        <h2 class="section-title">Open Your <em>Gift</em></h2>
-        <p class="section-desc">Tap the box to unwrap your surprise</p>
-      </div>
-      <div class="gift-wrap" id="giftWrap">
-        <canvas id="giftCanvas" width="320" height="340" style="border-radius:20px;cursor:pointer;" onclick="openGift()" title="Tap to open your gift!"></canvas>
-        <div class="gift-burst" id="giftBurst"></div>
-        <div class="gift-message glass" id="giftMessage"></div>
-      </div>
-      <!-- Hidden elements for compatibility -->
-      <div id="giftBox" style="display:none;"><div id="giftLid"></div></div>
-    </section>
+  document.getElementById('inputName')?.addEventListener('keydown', e => { 
+    if (e.key === 'Enter') document.getElementById('inputDOB').focus(); 
+  });
+  document.getElementById('inputDOB')?.addEventListener('keydown', e => { 
+    if (e.key === 'Enter') startWishing(); 
+  });
+});
 
-    <!-- ===== FEATURE 8: BIRTHDAY MEMORIES ===== -->
-     <section class="section memories-section" id="memories">
-  <div class="section-header">
-    <span class="section-tag">🎙️ Our Memories</span>
-    <h2 class="section-title">Voice <em>Memories</em></h2>
-    <p class="section-desc">Some moments are too precious to be forgotten 💛</p>
-  </div>
+// ─── Confetti ────────────────────────────────────────────
+function launchEntryConfetti() {
+  if (typeof launchConfetti === 'function') {
+    setTimeout(launchConfetti, 500);
+    setTimeout(launchConfetti, 1500);
+  }
+}
 
-  <div class="memories-wrap">
+// ─── CELEBRATE BUTTON — Fun fireworks burst ───────────────
+function triggerCelebrate() {
+  // Trigger confetti
+  if (typeof launchConfetti === 'function') launchConfetti();
 
-    <div class="memory-card glass">
-      <h3>🎵 cheers🥂</h3>
-      <audio controls>
-        <source src="assets/fitaahh.ogg" type="audio/ogg">
-      </audio>
-    </div>
+  // Animate the button
+  const btn = document.getElementById('celebrateBtn');
+  if (btn) {
+    btn.classList.add('celebrate-pop');
+    setTimeout(() => btn.classList.remove('celebrate-pop'), 600);
+  }
 
-    <div class="memory-card glass">
-      <h3>🎵 Danger aneey.</h3>
-      <audio controls>
-        <source src="assets/danger.ogg" type="audio/ogg">
-      </audio>
-    </div>
+  // Spawn emoji burst from center
+  spawnEmojiBurst();
+}
 
-    <div class="memory-card glass">
-      <h3>🎵 Nagavalli..happy ayoo</h3>
-      <audio controls>
-        <source src="assets/nagavalli.ogg" type="audio/ogg">
-      </audio>
-    </div>
+function spawnEmojiBurst() {
+  const burst = ['🎆','🎇','✨','🎊','🎉','💥','🌟','🎈'];
+  const container = document.body;
+  const cx = window.innerWidth / 2;
+  const cy = window.innerHeight / 2;
 
-    <div class="memory-card glass">
-      <h3>🎵 mendaa ponda..</h3>
-      <audio controls>
-        <source src="assets/kutty_potte.ogg" type="audio/ogg">
-      </audio>
-    </div>
+  for (let i = 0; i < 18; i++) {
+    const el = document.createElement('span');
+    el.className = 'burst-emoji';
+    el.textContent = burst[Math.floor(Math.random() * burst.length)];
+    el.style.cssText = `
+      position: fixed;
+      left: ${cx}px;
+      top: ${cy}px;
+      font-size: ${1.2 + Math.random() * 1.6}rem;
+      pointer-events: none;
+      z-index: 9998;
+      transform: translate(-50%, -50%);
+      transition: none;
+    `;
+    container.appendChild(el);
 
-  </div>
-</section>
-    
-    <!-- ===== FEATURE 10: BIRTHDAY FORTUNE TELLER ===== -->
-    <section class="section fortune-section" id="fortuneSection">
-      <div class="section-header">
-        <span class="section-tag">🔮 The Universe Speaks</span>
-        <h2 class="section-title">Birthday <em>Fortune</em></h2>
-        <p class="section-desc">Tap the crystal ball to reveal your destiny</p>
-      </div>
-      <div class="crystal-wrap">
-        <div class="crystal-ball" id="crystalBall" onclick="revealFortune()">
-          <div class="crystal-inner">
-            <div class="crystal-smoke" id="crystalSmoke"></div>
-            <div class="crystal-text" id="crystalText">✨</div>
-          </div>
-          <div class="crystal-shine"></div>
-        </div>
-        <div class="fortune-result glass" id="fortuneResult"></div>
-      </div>
-    </section>
+    const angle = (i / 18) * Math.PI * 2 + (Math.random() - 0.5) * 0.4;
+    const dist  = 80 + Math.random() * 160;
+    const dx    = Math.cos(angle) * dist;
+    const dy    = Math.sin(angle) * dist;
 
-    <!-- ===== FEATURE 11: ZODIAC & STAR MAP ===== -->
-    <section class="section zodiac-section" id="zodiacSection">
-      <div class="section-header">
-        <span class="section-tag">🌙 Written in the Stars</span>
-        <h2 class="section-title">Your <em>Zodiac</em></h2>
-        <p class="section-desc">The cosmos has a message for you</p>
-      </div>
-      <div class="zodiac-wrap">
-        <div class="zodiac-card glass" id="zodiacCard">
-          <canvas class="star-canvas" id="starCanvas" width="300" height="300"></canvas>
-          <div class="zodiac-info">
-            <div class="zodiac-symbol" id="zodiacSymbol"></div>
-            <div class="zodiac-name" id="zodiacName"></div>
-            <div class="zodiac-dates" id="zodiacDates"></div>
-            <div class="zodiac-traits" id="zodiacTraits"></div>
-          </div>
-        </div>
-      </div>
-    </section>
+    requestAnimationFrame(() => {
+      el.style.transition = `transform ${0.6 + Math.random() * 0.4}s ease-out, opacity 0.5s ease-in`;
+      el.style.transform  = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(1.5)`;
+      el.style.opacity    = '0';
+    });
 
-    <!-- SHARE PANEL -->
-    <div class="share-panel-wrapper">
-      <div class="share-panel glass">
-        <h3>📤 Share This Page</h3>
-        <p>Copy the link below and send it to <span class="dynamic-name"></span>!</p>
-        <div class="share-url-box">
-          <span id="shareUrl"></span>
-          <button onclick="copyLink()" class="btn-copy">Copy 📋</button>
-        </div>
-        <div class="social-btns">
-          <button onclick="shareWA()" class="btn-social wa">WhatsApp 💬</button>
-          <button onclick="shareTelegram()" class="btn-social tg">Telegram ✈️</button>
-        </div>
-      </div>
-    </div>
+    setTimeout(() => el.remove(), 1200);
+  }
+}
 
-    <!-- FOOTER -->
-    <footer class="footer">
-      <div class="footer-hearts">💖 Made with love 💖</div>
-      <p class="footer-credit">
-        <span class="credit-powered">powered by</span>
-        <span class="credit-handle">@Just.rahul.dev</span>
-      </p>
-    </footer>
+// ─── GALLERY PHOTO SHOW ───────────────────────────────────
+let galleryPhotos = []; // filled from device uploads (base64 URLs)
 
-  </div><!-- end mainPage -->
+let galleryRunning = false;
 
-  <!-- ===================== GALLERY PHOTO SHOW OVERLAY ===================== -->
-  <div id="galleryOverlay" class="gallery-overlay" style="display:none;">
-    <div class="gallery-overlay-bg"></div>
-    <div class="gallery-show-wrap">
-      <img id="galleryShowImg" class="gallery-show-img" src="" alt="" />
-      <div class="gallery-show-counter" id="galleryCounter"></div>
-    </div>
-  </div>
+function openGalleryShow() {
+  if (galleryPhotos.length === 0) {
+    showToast('Please upload 4 photos first 📸');
+    document.getElementById('onboarding')?.scrollIntoView({ behavior: 'smooth' });
+    return;
+  }
+  if (galleryRunning) return;
+  galleryRunning = true;
 
-  <!-- CONFETTI CANVAS removed -->
+  const overlay = document.getElementById('galleryOverlay');
+  const img     = document.getElementById('galleryShowImg');
+  const counter = document.getElementById('galleryCounter');
 
-  <!-- TOAST -->
-  <div id="toast" class="toast"></div>
+  overlay.style.display = 'flex';
+  // Fade overlay in
+  requestAnimationFrame(() => {
+    overlay.classList.add('active');
+  });
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-  <script src="confetti.js"></script>
-  <!-- particles.js removed -->
-  <script src="script.js"></script>
-  <script src="threescenes.js"></script>
-</body>
-</html>
+  function showPhoto(i) {
+    if (i >= galleryPhotos.length) {
+      // All done — fade out and return
+      overlay.classList.remove('active');
+      overlay.classList.add('fade-out');
+      setTimeout(() => {
+        overlay.style.display = 'none';
+        overlay.classList.remove('fade-out');
+        galleryRunning = false;
+        img.classList.remove('photo-popup');
+        img.src = '';
+      }, 700);
+      return;
+    }
+
+    counter.textContent = `${i + 1} / ${galleryPhotos.length}`;
+
+    // Reset animation
+    img.classList.remove('photo-popup');
+    img.style.opacity = '0';
+    img.src = galleryPhotos[i];
+
+    img.onload = function () {
+      // Trigger popup animation
+      requestAnimationFrame(() => {
+        img.style.opacity = '1';
+        img.classList.add('photo-popup');
+      });
+
+      // Show for 2.4 seconds then move to next
+      setTimeout(() => {
+        img.classList.remove('photo-popup');
+        img.classList.add('photo-exit');
+        setTimeout(() => {
+          img.classList.remove('photo-exit');
+          showPhoto(i + 1);
+        }, 400);
+      }, 2400);
+    };
+
+    img.onerror = function () {
+      // If image not found, skip to next
+      setTimeout(() => showPhoto(i + 1), 300);
+    };
+  }
+
+  showPhoto(0);
+}
+
+// ─── HANDLE PHOTO UPLOADS ────────────────────────────────
+function handlePhotoUploads(input) {
+  const files = Array.from(input.files).slice(0, 4);
+  if (files.length === 0) return;
+
+  galleryPhotos = [];
+  const previews = document.querySelectorAll('.upload-preview-img');
+  previews.forEach(p => { p.src = ''; p.style.display = 'none'; });
+
+  let loaded = 0;
+  files.forEach((file, i) => {
+    const reader = new FileReader();
+    reader.onload = function (e) {
+      galleryPhotos[i] = e.target.result;
+      if (previews[i]) {
+        previews[i].src = e.target.result;
+        previews[i].style.display = 'block';
+      }
+      loaded++;
+      const label = document.getElementById('uploadLabel');
+      if (label) label.textContent = `${loaded} photo${loaded > 1 ? 's' : ''} selected ✅`;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+// ─── NEXT BIRTHDAY COUNTDOWN ─────────────────────────────
+function startNextBdayCountdown(dobStr) {
+  const strip = document.createElement('div');
+  strip.className = 'next-bday-strip';
+  strip.innerHTML = '<span class="nbs-label">🎂 Next birthday in</span> <span class="nbs-val" id="nbsVal">…</span>';
+
+  // Insert after heroDate
+  const heroDate = document.getElementById('heroDate');
+  if (heroDate && heroDate.parentNode) {
+    heroDate.parentNode.insertBefore(strip, heroDate.nextSibling);
+  }
+
+  function update() {
+    const now  = new Date();
+    const dob  = new Date(dobStr);
+    let next   = new Date(now.getFullYear(), dob.getMonth(), dob.getDate());
+    if (next <= now) next.setFullYear(now.getFullYear() + 1);
+
+    const diff = next - now;
+    const days = Math.floor(diff / 86400000);
+    const hrs  = Math.floor((diff % 86400000) / 3600000);
+    const mins = Math.floor((diff % 3600000) / 60000);
+    const secs = Math.floor((diff % 60000) / 1000);
+
+    const el = document.getElementById('nbsVal');
+    if (!el) return;
+    if (days === 0 && hrs === 0 && mins === 0)
+      el.textContent = '🎉 TODAY!';
+    else if (days === 0)
+      el.textContent = `${hrs}h ${mins}m ${secs}s`;
+    else
+      el.textContent = `${days}d ${hrs}h ${mins}m`;
+  }
+  update();
+  setInterval(update, 1000);
+}
+
+// ─── SPARKLE CURSOR TRAIL ────────────────────────────────
+(function () {
+  const COLORS = ['#FFD700','#FF4D8D','#00E5FF','#E040FB','#39FF14','#FF8C00'];
+  let last = 0;
+  document.addEventListener('mousemove', (e) => {
+    const now = Date.now();
+    if (now - last < 40) return; // throttle
+    last = now;
+    const dot = document.createElement('div');
+    dot.className = 'sparkle-dot';
+    const size = 6 + Math.random() * 8;
+    dot.style.cssText = `
+      width:${size}px; height:${size}px;
+      left:${e.clientX}px; top:${e.clientY}px;
+      background:${COLORS[Math.floor(Math.random()*COLORS.length)]};
+      box-shadow: 0 0 ${size*2}px ${COLORS[Math.floor(Math.random()*COLORS.length)]};
+    `;
+    document.body.appendChild(dot);
+    setTimeout(() => dot.remove(), 700);
+  });
+})();
+
+// ════════════════════════════════════════════════════════
+//  FEATURE 2 — BLOW OUT THE CANDLES
+// ════════════════════════════════════════════════════════
+let candlesOut = 0;
+let totalCandles = 0;
+let micStream = null;
+
+function initCandles(age) {
+  const row = document.getElementById('candlesRow');
+  if (!row) return;
+  const count = Math.min(Math.max(age || 5, 1), 10);
+  totalCandles = count; candlesOut = 0;
+  row.innerHTML = '';
+  for (let i = 0; i < count; i++) {
+    const colors = ['#FF4D8D','#FFD700','#00E5FF','#c084fc','#39FF14','#FF8C00'];
+    const col = colors[i % colors.length];
+    row.innerHTML += `
+      <div class="candle" onclick="blowCandle(${i})">
+        <div class="candle-smoke" id="smoke${i}">💨</div>
+        <div class="candle-flame" id="flame${i}">🔥</div>
+        <div class="candle-stick" style="background:linear-gradient(180deg,${col}aa,${col})"></div>
+      </div>`;
+  }
+  document.getElementById('candleMsg').textContent = '';
+}
+
+function blowCandle(i) {
+  const flame = document.getElementById('flame' + i);
+  const smoke = document.getElementById('smoke' + i);
+  if (!flame || flame.classList.contains('out')) return;
+  flame.classList.add('out');
+  smoke.classList.add('show');
+  candlesOut++;
+  if (candlesOut === totalCandles) {
+    setTimeout(() => {
+      const msg = document.getElementById('candleMsg');
+      if (msg) msg.textContent = `🎉 Wish Made! Happy Birthday ${personName}! 🎂`;
+    }, 500);
+  }
+}
+
+function startMicBlow() {
+  const hint = document.getElementById('micHint');
+  if (!navigator.mediaDevices) { if(hint) hint.textContent = 'Mic not supported on this browser.'; return; }
+  navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+    micStream = stream;
+    if (hint) hint.textContent = '🎤 Listening… blow into your mic!';
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const analyser = ctx.createAnalyser();
+    const source = ctx.createMediaStreamSource(stream);
+    source.connect(analyser);
+    analyser.fftSize = 256;
+    const data = new Uint8Array(analyser.frequencyBinCount);
+    let blown = 0;
+    function check() {
+      if (candlesOut === totalCandles) { stream.getTracks().forEach(t=>t.stop()); return; }
+      analyser.getByteFrequencyData(data);
+      const vol = data.reduce((a,b)=>a+b,0)/data.length;
+      if (vol > 30) {
+        blown++;
+        if (blown > 3) {
+          // blow out one random unblown candle
+          for (let i = 0; i < totalCandles; i++) {
+            const f = document.getElementById('flame'+i);
+            if (f && !f.classList.contains('out')) { blowCandle(i); break; }
+          }
+          blown = 0;
+        }
+      }
+      requestAnimationFrame(check);
+    }
+    check();
+  }).catch(() => { if(hint) hint.textContent = 'Mic access denied. Click candles instead!'; });
+}
+
+// ════════════════════════════════════════════════════════
+//  FEATURE 4 — AGE IN FUN STATS
+// ════════════════════════════════════════════════════════
+function startFunStats(dobStr) {
+  function fmt(n) { return Math.floor(n).toLocaleString(); }
+  function update() {
+    const now  = Date.now();
+    const born = new Date(dobStr).getTime();
+    const ms   = now - born;
+    const secs = ms / 1000;
+    const mins = secs / 60;
+    const hrs  = mins / 60;
+    const days = hrs  / 24;
+
+    const hb = document.getElementById('statHeartbeats');
+    const br = document.getElementById('statBreaths');
+    const ho = document.getElementById('statHours');
+    const da = document.getElementById('statDays');
+    const sl = document.getElementById('statSleep');
+    const la = document.getElementById('statLaughs');
+
+    if (hb) hb.textContent = fmt(secs * 1.2);      // ~72 bpm avg
+    if (br) br.textContent = fmt(secs * 0.267);     // ~16 breaths/min
+    if (ho) ho.textContent = fmt(hrs);
+    if (da) da.textContent = fmt(days);
+    if (sl) sl.textContent = fmt(hrs * 0.33);       // ~8hrs/day sleep
+    if (la) la.textContent = fmt(days * 15);        // ~15 laughs/day
+  }
+  update();
+  setInterval(update, 1000);
+}
+
+// ════════════════════════════════════════════════════════
+//  FEATURE 6 — MYSTERY GIFT BOX
+// ════════════════════════════════════════════════════════
+let giftOpened = false;
+const giftMessages = [
+  "If happiness had a color, it would look exactly like you 💛",
+  "The world is brighter, louder, and more beautiful because you are in it. 🌟",
+  "Your laugh is the best song. Your heart is the best gift. 💖",
+  "Today the universe wrapped all its magic into one person — YOU. ✨",
+  "Keep being unapologetically, wonderfully you. The world needs exactly that. 🦋",
+  "You are my yellow forever, the warmth my heart never wants to lose. ✨",
+];
+
+function openGift() {
+  if (giftOpened) return;
+  giftOpened = true;
+  // Trigger 3D lid opening (threescenes.js handles the rest)
+  if (typeof openGift3D === 'function') {
+    openGift3D();
+  } else {
+    // Fallback to original CSS approach
+    const lid  = document.getElementById('giftLid');
+    const burst = document.getElementById('giftBurst');
+    const msg  = document.getElementById('giftMessage');
+    if (!lid) return;
+    lid.classList.add('open');
+    setTimeout(() => {
+      if (burst) { burst.textContent = '🎉✨🎊💫🌟'; burst.classList.add('show'); }
+    }, 400);
+    setTimeout(() => {
+      const m = giftMessages[Math.floor(Math.random() * giftMessages.length)];
+      if (msg) { msg.textContent = m; msg.classList.add('show'); }
+    }, 800);
+  }
+}
+
+// ════════════════════════════════════════════════════════
+//  FEATURE 8 — BIRTHDAY FORTUNE TELLER
+// ════════════════════════════════════════════════════════
+let fortuneRevealed = false;
+const fortunes = [
+  { emoji:'🌟', title:'A year of breakthroughs', text:'The stars align for something big. A dream you have been chasing is finally within reach this year.' },
+  { emoji:'💰', title:'Abundance incoming', text:'Unexpected opportunities will knock. Say yes more than no — the universe is routing resources your way.' },
+  { emoji:'❤️', title:'Love will surprise you', text:'The heart you least expect will matter the most. Stay open, stay soft, stay you.' },
+  { emoji:'🚀', title:'Your boldest chapter yet', text:'A leap of faith you take this year will define the next decade. Jump anyway.' },
+  { emoji:'🌺', title:'Bloom where you are', text:'Growth is not always loud. Quiet, steady progress will take you further than you imagine.' },
+  { emoji:'🎯', title:'Focus brings magic', text:'One goal. Full heart. Zero distractions. That formula will unlock something extraordinary for you.' },
+  { emoji:'🦋', title:'Transformation awaits', text:'You will shed what no longer serves you and emerge lighter, freer, and more yourself than ever.' },
+];
+
+function revealFortune() {
+  const smoke = document.getElementById('crystalSmoke');
+  const text  = document.getElementById('crystalText');
+  const result= document.getElementById('fortuneResult');
+  if (!smoke) return;
+
+  if (fortuneRevealed) {
+    // Re-roll
+    fortuneRevealed = false;
+    if (result) result.classList.remove('show');
+    if (text)  text.textContent = '✨';
+  }
+
+  smoke.classList.add('swirling');
+  if (text) text.textContent = '🔮';
+
+  setTimeout(() => {
+    smoke.classList.remove('swirling');
+    const f = fortunes[Math.floor(Math.random() * fortunes.length)];
+    if (text) text.textContent = f.emoji;
+    if (result) {
+      result.innerHTML = `<span class="fortune-emoji">${f.emoji}</span><strong>${f.title}</strong><br><span class="fortune-text">${f.text}</span><br><br><small style="color:var(--text-muted);font-size:0.75rem">Tap again for a new fortune ✨</small>`;
+      result.classList.add('show');
+    }
+    fortuneRevealed = true;
+  }, 1200);
+}
+
+// ════════════════════════════════════════════════════════
+//  FEATURE 10 — ZODIAC & STAR MAP
+// ════════════════════════════════════════════════════════
+const ZODIACS = [
+  { name:'Capricorn', symbol:'♑', dates:'Dec 22 – Jan 19', traits:['Ambitious','Disciplined','Practical'], stars:[[150,60],[120,90],[180,90],[100,130],[200,130],[150,170]] },
+  { name:'Aquarius',  symbol:'♒', dates:'Jan 20 – Feb 18', traits:['Visionary','Rebel','Humanitarian'], stars:[[80,80],[130,60],[180,80],[150,120],[100,140],[160,160]] },
+  { name:'Pisces',    symbol:'♓', dates:'Feb 19 – Mar 20', traits:['Dreamy','Empathetic','Artistic'], stars:[[100,70],[160,80],[120,120],[180,130],[90,160],[150,170]] },
+  { name:'Aries',     symbol:'♈', dates:'Mar 21 – Apr 19', traits:['Bold','Energetic','Leader'], stars:[[150,50],[110,100],[190,100],[130,150],[170,150],[150,200]] },
+  { name:'Taurus',    symbol:'♉', dates:'Apr 20 – May 20', traits:['Loyal','Patient','Sensual'], stars:[[150,60],[100,110],[200,110],[120,160],[180,160],[150,200]] },
+  { name:'Gemini',    symbol:'♊', dates:'May 21 – Jun 20', traits:['Witty','Curious','Adaptable'], stars:[[100,60],[200,60],[100,110],[200,110],[120,160],[180,160]] },
+  { name:'Cancer',    symbol:'♋', dates:'Jun 21 – Jul 22', traits:['Nurturing','Intuitive','Loyal'], stars:[[150,50],[90,100],[210,100],[120,150],[180,150],[150,200]] },
+  { name:'Leo',       symbol:'♌', dates:'Jul 23 – Aug 22', traits:['Charismatic','Brave','Creative'], stars:[[150,40],[80,90],[220,90],[100,150],[200,150],[150,210]] },
+  { name:'Virgo',     symbol:'♍', dates:'Aug 23 – Sep 22', traits:['Precise','Reliable','Intelligent'], stars:[[150,50],[100,100],[200,100],[130,155],[170,155],[150,200]] },
+  { name:'Libra',     symbol:'♎', dates:'Sep 23 – Oct 22', traits:['Balanced','Charming','Fair'], stars:[[80,100],[220,100],[150,60],[130,140],[170,140],[150,200]] },
+  { name:'Scorpio',   symbol:'♏', dates:'Oct 23 – Nov 21', traits:['Intense','Passionate','Magnetic'], stars:[[150,50],[90,110],[210,110],[110,160],[190,160],[150,210]] },
+  { name:'Sagittarius',symbol:'♐',dates:'Nov 22 – Dec 21', traits:['Adventurous','Optimistic','Free'], stars:[[150,40],[90,100],[210,100],[120,160],[180,160],[150,220]] },
+];
+
+function getZodiac(dobStr) {
+  const d = new Date(dobStr);
+  const m = d.getMonth() + 1, day = d.getDate();
+  if ((m===12&&day>=22)||(m===1&&day<=19))  return ZODIACS[0];
+  if ((m===1&&day>=20)||(m===2&&day<=18))   return ZODIACS[1];
+  if ((m===2&&day>=19)||(m===3&&day<=20))   return ZODIACS[2];
+  if ((m===3&&day>=21)||(m===4&&day<=19))   return ZODIACS[3];
+  if ((m===4&&day>=20)||(m===5&&day<=20))   return ZODIACS[4];
+  if ((m===5&&day>=21)||(m===6&&day<=20))   return ZODIACS[5];
+  if ((m===6&&day>=21)||(m===7&&day<=22))   return ZODIACS[6];
+  if ((m===7&&day>=23)||(m===8&&day<=22))   return ZODIACS[7];
+  if ((m===8&&day>=23)||(m===9&&day<=22))   return ZODIACS[8];
+  if ((m===9&&day>=23)||(m===10&&day<=22))  return ZODIACS[9];
+  if ((m===10&&day>=23)||(m===11&&day<=21)) return ZODIACS[10];
+  return ZODIACS[11];
+}
+
+function initZodiac(dobStr) {
+  const z = getZodiac(dobStr);
+  const sym  = document.getElementById('zodiacSymbol');
+  const name = document.getElementById('zodiacName');
+  const dates= document.getElementById('zodiacDates');
+  const traits=document.getElementById('zodiacTraits');
+  if (sym)   sym.textContent   = z.symbol;
+  if (name)  name.textContent  = z.name;
+  if (dates) dates.textContent = z.dates;
+  if (traits) {
+    traits.innerHTML = z.traits.map(t => `<span class="zodiac-trait">${t}</span>`).join('');
+  }
+  drawStarMap(z);
+}
+
+function drawStarMap(z) {
+  const canvas = document.getElementById('starCanvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0,0,W,H);
+
+  // Background
+  const bg = ctx.createRadialGradient(W/2,H/2,10,W/2,H/2,W/2);
+  bg.addColorStop(0,'#1a0040'); bg.addColorStop(1,'#050010');
+  ctx.fillStyle = bg; ctx.fillRect(0,0,W,H);
+
+  // Tiny random bg stars
+  for (let i=0; i<80; i++) {
+    ctx.beginPath();
+    ctx.arc(Math.random()*W, Math.random()*H, Math.random()*1.5, 0, Math.PI*2);
+    ctx.fillStyle = `rgba(255,255,255,${0.2+Math.random()*0.5})`;
+    ctx.fill();
+  }
+
+  // Constellation lines
+  ctx.strokeStyle = 'rgba(255,215,0,0.3)';
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([4,6]);
+  ctx.beginPath();
+  z.stars.forEach((s,i) => { i===0 ? ctx.moveTo(s[0],s[1]) : ctx.lineTo(s[0],s[1]); });
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Bright constellation stars
+  z.stars.forEach(s => {
+    const grd = ctx.createRadialGradient(s[0],s[1],0,s[0],s[1],10);
+    grd.addColorStop(0,'rgba(255,215,0,1)');
+    grd.addColorStop(0.5,'rgba(255,215,0,0.4)');
+    grd.addColorStop(1,'rgba(255,215,0,0)');
+    ctx.beginPath();
+    ctx.arc(s[0],s[1],10,0,Math.PI*2);
+    ctx.fillStyle = grd; ctx.fill();
+    ctx.beginPath();
+    ctx.arc(s[0],s[1],3,0,Math.PI*2);
+    ctx.fillStyle = '#FFE866'; ctx.fill();
+  });
+}
+
+   //MEMORY AUDIO ↔ BACKGROUND MUSIC FADE
+   //================================================ 
+
+const bgMusic = document.getElementById('bgMusic');
+
+function fadeVolume(audio, target, duration = 1200) {
+  const start = audio.volume;
+  const steps = 20;
+  const stepTime = duration / steps;
+  const change = (target - start) / steps;
+
+  let current = 0;
+
+  const timer = setInterval(() => {
+    current++;
+    audio.volume = Math.max(0, Math.min(1, start + change * current));
+
+    if (current >= steps) {
+      clearInterval(timer);
+    }
+  }, stepTime);
+}
+
+const memoryAudios = document.querySelectorAll('.memory-card audio');
+
+memoryAudios.forEach(audio => {
+
+  audio.addEventListener('play', () => {
+
+    memoryAudios.forEach(other => {
+      if (other !== audio && !other.paused) {
+        other.pause();
+        other.currentTime = 0;
+      }
+    });
+
+    if (bgMusic && !bgMusic.paused) {
+      fadeVolume(bgMusic, 0.1, 1200);
+    }
+  });
+
+  audio.addEventListener('ended', () => {
+    if (bgMusic) {
+      fadeVolume(bgMusic, 1, 1200);
+    }
+  });
+
+  audio.addEventListener('pause', () => {
+    if (
+      bgMusic &&
+      audio.currentTime < audio.duration &&
+      [...memoryAudios].every(a => a.paused)
+    ) {
+      fadeVolume(bgMusic, 1, 1200);
+    }
+  });
+
+});
